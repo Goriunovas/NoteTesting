@@ -11,17 +11,15 @@ namespace Noted.Controllers
     public class CategoriesController : ApiController 
     {
         public MongoClient _client;
-        public MongoServer _server;
-        public MongoDatabase _db;         
+        public IMongoDatabase _db;         
 
         public CategoriesController()
         {
             _client = new MongoClient("mongodb+srv://Test:Test@notetesting-msig9.mongodb.net/test");
-            _server = _client.GetServer();
-            _db = _server.GetDatabase("NoteDB");
+            _db = _client.GetDatabase("NoteDB");
         }
 
-        public MongoCategory FindCategoryById(List<MongoCategory> Categories, int Id)
+        private MongoCategory FindCategoryById(List<MongoCategory> Categories, int Id)
         {
             foreach (var category in Categories)
             {
@@ -31,75 +29,107 @@ namespace Noted.Controllers
             return null;
         }
 
-        // GET: api/Categories
-        public IEnumerable<MongoCategory> Get()
+        private MongoCustomUser FindUserDocument()
         {
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
-            MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
-            return mongoUser.Categories;
+            List<MongoCustomUser> mongoUser = _db.GetCollection<MongoCustomUser>("Users").Find(x => x.Email == RequestContext.Principal.Identity.Name).ToList();
+            if (mongoUser.Count != 0)
+                return mongoUser[0];
+            return null;
         }
 
+        [HttpGet]
+        // GET: api/Categories
+        public IHttpActionResult Get()
+        {
+            MongoCustomUser customUser = FindUserDocument();
+            if (customUser != null)
+                return Ok(customUser.Categories);
+            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+        }
+
+        [HttpGet]
         // GET: api/Categories/5
         public IHttpActionResult Get(int id)
         {
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
-            MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
-            MongoCategory mongoCategory = FindCategoryById(mongoUser.Categories, id);
-            if (mongoCategory == null)
-                return BadRequest("Note with Id " + id + " was not found.");
-            return Ok(mongoCategory);
+            MongoCustomUser customUser = FindUserDocument();
+            if (customUser != null)
+            {
+                MongoCategory mongoCategory = FindCategoryById(customUser.Categories, id);
+                if (mongoCategory == null)
+                    return BadRequest("Note with Id " + id + " was not found.");
+                return Ok(mongoCategory);
+            }     
+            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
         }
 
+        [HttpPost]
         // POST: api/Categories
         public IHttpActionResult Post([FromBody]Category category)
         {
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
-            MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
+            MongoCustomUser customUser = FindUserDocument();
+            if (customUser != null)
+            {
 
-            MongoCategory newCategory = new MongoCategory();
- 
-            newCategory.CategoryId = mongoUser.Categories[mongoUser.Categories.Capacity-1].CategoryId+1;
-            newCategory.Name = category.Name;
+                MongoCategory newCategory = new MongoCategory();
 
-            mongoUser.Categories.Add(newCategory);
+                if (customUser.Categories.Count > 0)
+                    newCategory.CategoryId = customUser.Categories[customUser.Categories.Count - 1].CategoryId + 1;
+                else
+                    newCategory.CategoryId = 0;
+                newCategory.Name = category.Name;
 
-            _db.GetCollection<MongoCustomUser>("Users").Save(newCategory);
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+                customUser.Categories.Add(newCategory);
 
-            return CreatedAtRoute("DefaultApi", newCategory.Id, newCategory);
+                _db.GetCollection<MongoCategory>("Categories").InsertOne(newCategory);
+                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+                
+                return CreatedAtRoute("DefaultApi", newCategory.Id, newCategory);
+            }
+            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
         }
 
+        [HttpPut]
         // PUT: api/Categories/5
         public IHttpActionResult Put(int id, [FromBody]Category category)
         {
-            MongoCategory oldCategory = null;
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
-            MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
-            oldCategory = FindCategoryById(mongoUser.Categories, id);
-            if(oldCategory == null)
-                return BadRequest("Note with Id " + id + " was not found.");
+            MongoCustomUser customUser = FindUserDocument();
+            if (customUser != null)
+            {
+                MongoCategory mongoCategory = FindCategoryById(customUser.Categories, id);
 
-            oldCategory.Name = category.Name;
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+                if(mongoCategory == null)
+                    return BadRequest("Note with Id " + id + " was not found.");
 
-            return Ok(oldCategory);
+                mongoCategory.Name = category.Name;
+
+                _db.GetCollection<MongoCategory>("Categories").ReplaceOne(x => x.CategoryId == id, mongoCategory);
+                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+
+                return Ok(mongoCategory);
+            }
+            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
         }
 
+        [HttpDelete]
         // DELETE: api/Categories/5
         public IHttpActionResult Delete(int id)
         {
-            MongoCategory Category = null;
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
-            MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
-            Category = FindCategoryById(mongoUser.Categories, id);
+            MongoCustomUser customUser = FindUserDocument();
+            if (customUser != null)
+            {
+                MongoCategory mongoCategory = FindCategoryById(customUser.Categories, id);
 
-            if(Category == null)
-                return BadRequest("Note with Id " + id + " was not found.");
+                if (mongoCategory == null)
+                    return BadRequest("Note with Id " + id + " was not found.");
 
-            mongoUser.Categories.Remove(Category);
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+                customUser.Categories.Remove(mongoCategory);
 
-            return Ok();
+                _db.GetCollection<MongoCategory>("Categories").FindOneAndDelete(x => x.CategoryId == id);
+                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+
+                return Ok();
+            }
+            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
         }
 
 

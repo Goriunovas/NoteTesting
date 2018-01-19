@@ -66,8 +66,8 @@
     <Reference Include="MongoDB.Driver.Core, Version=2.5.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MongoDB.Driver.Core.2.5.0\lib\net45\MongoDB.Driver.Core.dll</HintPath>
     </Reference>
-    <Reference Include="MongoDB.Driver.Legacy, Version=2.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\mongocsharpdriver.2.5.0\lib\net45\MongoDB.Driver.Legacy.dll</HintPath>
+    <Reference Include="MongoDB.Driver.Legacy, Version=2.0.0.828, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mongocsharpdriver.2.0.0\lib\net45\MongoDB.Driver.Legacy.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -128,13 +128,11 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Managers\DataManager.cs" />
     <Compile Include="Managers\JwtManager.cs" />
     <Compile Include="Models\CategoriesModels.cs" />
     <Compile Include="Models\NotesModels.cs" />
     <Compile Include="Models\TabsModels.cs" />
     <Compile Include="Models\UserModels.cs" />
-    <Compile Include="Managers\UsersManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
