@@ -7,12 +7,11 @@ using MongoDB.Driver.Builders;
 
 namespace Noted.Controllers
 {
+    [JwtAuthentication]
     public class NotesController : ApiController
     {
         public MongoClient _client;
         public IMongoDatabase _db;
-
-       
 
         public NotesController()
         {
