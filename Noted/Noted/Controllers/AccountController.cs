@@ -5,8 +5,8 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Noted.Models;
-using Noted.Models;
 using MongoDB.Driver;
+using Noted.Managers;
 using MongoDB.Driver.Builders;
 
 
@@ -18,11 +18,13 @@ namespace Noted.Controllers
 
         public MongoClient _client;
         public IMongoDatabase _db;
+        public PasswordManager passwordManager;
 
         public AccountController()
         {
             _client = new MongoClient("mongodb+srv://Test:Test@notetesting-msig9.mongodb.net/test");
             _db = _client.GetDatabase("NoteDB");
+            passwordManager = new PasswordManager();
         }
 
 
@@ -31,10 +33,10 @@ namespace Noted.Controllers
         [Route("Login")]
         public string Login([FromBody]UserLogin user)
         {
-            if (CheckUser(user.Email, user.Password))
-            {
+            List<MongoCustomUser> mongoUser = _db.GetCollection<MongoCustomUser>("Users").Find(x => x.Email == user.Email).ToList();
+
+            if (mongoUser.Count != 0 && passwordManager.ValidatePassword(user.Password,mongoUser[0].Password,mongoUser[0].Salt))
                 return JwtManager.GenerateToken(user.Email);
-            }
 
             throw new HttpResponseException(HttpStatusCode.Unauthorized);
         }
@@ -53,8 +55,11 @@ namespace Noted.Controllers
 
 
             MongoCustomUser mongoUser = new MongoCustomUser();
-            mongoUser.Email = user.Email;
-            mongoUser.Password = user.Password;
+            mongoUser.Email = user.Email;         
+
+            mongoUser.Salt = passwordManager.GetRandomSalt();
+            mongoUser.Password = passwordManager.HashPassword(user.Password, mongoUser.Salt);
+
             mongoUser.Categories = new List<MongoCategory>();
             mongoUser.Tabs = new List<MongoTab>();
             mongoUser.Notes = new List<MongoNote>();
@@ -101,20 +106,6 @@ namespace Noted.Controllers
         // DELETE: api/Account/5
         public void Delete(int id)
         {
-        }
-
-        public bool CheckUser(string Email, string Password)
-        {
-            if (Email == null || Email.Length == 0)
-                return false;
-
-            var query = Query.EQ("Email", Email);
-            List<MongoCustomUser> mongoUser = _db.GetCollection<MongoCustomUser>("Users").Find(x => x.Email == Email).ToList();
-
-            if (mongoUser.Count != 0 && mongoUser[0].Password == Password)
-                return true;
-
-            return false;
         }
 
         public bool UserExists(string Email)

@@ -41,6 +41,8 @@ namespace Noted.Models
         public string Email { get; set; }
         [BsonElement("Password")]
         public string Password { get; set; }
+        [BsonElement("Salt")]
+        public string Salt { get; set; }
         [BsonElement("Categories")]
         public List<MongoCategory> Categories { get; set; }
         [BsonElement("Tabs")]
