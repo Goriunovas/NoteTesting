@@ -70,7 +70,9 @@ namespace Noted.Controllers
             {
                 MongoNote newNote = new MongoNote();
 
-                newNote.NoteId = customUser.Notes[customUser.Notes.Capacity - 1].NoteId + 1;
+                if (customUser.Notes.Count != 0)
+                    newNote.NoteId = customUser.Notes[customUser.Notes.Count - 1].NoteId + 1;
+                else newNote.NoteId = 0;
                 newNote.Name = note.Name;
                 newNote.Text = note.Text;
                 newNote.Categories = new List<MongoCategory>();

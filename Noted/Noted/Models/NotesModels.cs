@@ -24,9 +24,8 @@ namespace Noted.Models
     
     public class MongoNote
     {
-        [BsonId]
         public ObjectId Id { get; set; }
-        [BsonElement("TabId")]
+        [BsonElement("NoteId")]
         public int NoteId { get; set; }
         [BsonElement("Name")]
         public string Name { get; set; }
@@ -34,7 +33,7 @@ namespace Noted.Models
         public string Text { get; set; }
         [BsonElement("Categories")]
         public List<MongoCategory> Categories { get; set; }
-        [BsonElement("Categories")]
+        [BsonElement("Dates")]
         public List<MongoDate> Dates { get; set; }
     }
 }
