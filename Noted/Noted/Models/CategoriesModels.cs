@@ -12,12 +12,17 @@ namespace Noted.Models
         public string Name { get; set; }
     }
 
+    public class TempCategory
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+    }
+
     public class MongoCategory
     {
         [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
         public ObjectId Id { get; set; }
-        [BsonElement("CategoryId")]
-        public int CategoryId { get; set; }
         [BsonElement("Name")]
         public string Name { get; set; }
     }

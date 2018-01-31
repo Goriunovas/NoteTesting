@@ -34,20 +34,22 @@ namespace Noted.Controllers
         // GET: api/Categories
         public IEnumerable<MongoTab> Get()
         {
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
+            /*var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
             MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
-            return mongoUser.Tabs;
+            return mongoUser.Tabs;*/
+            return null;
         }
 
         // GET: api/Categories/5
         public IHttpActionResult Get(int id)
         {
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
+            /*var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
             MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
             MongoTab mongoTab = FindTabById(mongoUser.Tabs, id);
             if (mongoTab == null)
                 return BadRequest("Tab with Id " + id + " was not found.");
-            return Ok(mongoTab);
+            return Ok(mongoTab);*/
+            return Ok();
         }
 
         // POST: api/Categories
@@ -58,7 +60,7 @@ namespace Noted.Controllers
 
             MongoTab newTab = new MongoTab();
 
-            newTab.TabId = mongoUser.Tabs[mongoUser.Tabs.Capacity-1].TabId+1;
+            /*newTab.TabId = mongoUser.Tabs[mongoUser.Tabs.Capacity-1].TabId+1;
             newTab.Name = tab.Name;
             newTab.Categories = new List<MongoCategory>();
 
@@ -73,7 +75,7 @@ namespace Noted.Controllers
 
             mongoUser.Tabs.Add(newTab);
 
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);*/
 
             return CreatedAtRoute("DefaultApi", newTab.Id, newTab);
         }
@@ -82,7 +84,7 @@ namespace Noted.Controllers
         public IHttpActionResult Put(int id, [FromBody]Tab tab)
         {
             MongoTab oldTab = null;
-            var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
+            /*var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
             MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
             oldTab = FindTabById(mongoUser.Tabs, id);
             if (oldTab == null)
@@ -100,7 +102,7 @@ namespace Noted.Controllers
                 }
             }
 
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);*/
 
             return Ok(oldTab);
         }
@@ -108,7 +110,7 @@ namespace Noted.Controllers
         // DELETE: api/Categories/5
         public IHttpActionResult Delete(int id)
         {
-            MongoTab tab = null;
+            /*MongoTab tab = null;
             var query = Query.EQ("Email", RequestContext.Principal.Identity.Name);
             MongoCustomUser mongoUser = _db.GetCollection<MongoCustomUser>("Users").FindOne(query);
             tab = FindTabById(mongoUser.Tabs, id);
@@ -117,7 +119,7 @@ namespace Noted.Controllers
                 return BadRequest("Note with Id " + id + " was not found.");
 
             mongoUser.Tabs.Remove(tab);
-            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);
+            _db.GetCollection<MongoCustomUser>("Users").Save(mongoUser);*/
 
             return Ok();
         }

@@ -8,7 +8,7 @@ using Noted.Models;
 using MongoDB.Driver;
 using Noted.Managers;
 using MongoDB.Driver.Builders;
-
+using MongoDB.Bson;
 
 namespace Noted.Controllers
 {
@@ -50,9 +50,8 @@ namespace Noted.Controllers
             if (UserExists(user.Email))
                 return BadRequest("This email is already in use");
 
-            if(user.Password != user.ConfirmPassword)
-                return BadRequest("Password and confirmation password needs to be the same");
-
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
             MongoCustomUser mongoUser = new MongoCustomUser();
             mongoUser.Email = user.Email;         
@@ -60,9 +59,9 @@ namespace Noted.Controllers
             mongoUser.Salt = passwordManager.GetRandomSalt();
             mongoUser.Password = passwordManager.HashPassword(user.Password, mongoUser.Salt);
 
-            mongoUser.Categories = new List<MongoCategory>();
-            mongoUser.Tabs = new List<MongoTab>();
-            mongoUser.Notes = new List<MongoNote>();
+            mongoUser.Categories = new List<ObjectId>();
+            mongoUser.Tabs = new List<ObjectId>();
+            mongoUser.Notes = new List<ObjectId>();
 
             Create(mongoUser);
 

@@ -4,6 +4,7 @@ using Noted.Filters;
 using Noted.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
+using MongoDB.Bson;
 
 namespace Noted.Controllers
 {
@@ -21,13 +22,11 @@ namespace Noted.Controllers
             _db = _client.GetDatabase("NoteDB");
         }
 
-        private MongoNote FindNoteById(List<MongoNote> Notes, int Id)
+        private MongoNote FindNoteById(ObjectId Id)
         {
-            foreach (var note in Notes)
-            {
-                if (note.NoteId == Id)
-                    return note;
-            }
+            List<MongoNote> mongoNote = _db.GetCollection<MongoNote>("Notes").Find(x => x.Id == Id).ToList();
+            if (mongoNote.Count != 0)
+                return mongoNote[0];
             return null;
         }
 
@@ -42,130 +41,134 @@ namespace Noted.Controllers
         // GET: api/Categories
         public IHttpActionResult Get()
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
             MongoCustomUser customUser = FindUserDocument();
-            if (customUser != null)
-                return Ok(customUser.Notes);
-            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+            if (customUser == null)
+                return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+
+            List<MongoNote> notes = new List<MongoNote>();
+            foreach (var note in customUser.Notes)
+            {
+                notes.Add(FindNoteById(note));
+            }
+            return Ok(notes);
+
         }
 
         // GET: api/Categories/5
-        public IHttpActionResult Get(int id)
+        public IHttpActionResult Get(string id)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            ObjectId oId = ObjectId.Parse(id);
             MongoCustomUser customUser = FindUserDocument();
-            if (customUser != null)
-            {
-                MongoNote MongoNote = FindNoteById(customUser.Notes, id);
-                if (MongoNote == null)
-                    return BadRequest("Note with Id " + id + " was not found.");
-                return Ok(MongoNote);
-            }
-            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+            if (customUser == null)
+                return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+
+            MongoNote MongoNote = FindNoteById(oId);
+            if (MongoNote == null)
+                return BadRequest("Note with Id " + id + " was not found.");
+            return Ok(MongoNote);
+
+
         }
 
         // POST: api/Categories
         public IHttpActionResult Post([FromBody]Note note)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             MongoCustomUser customUser = FindUserDocument();
-            if (customUser != null)
+            if (customUser == null)
+                return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+            if (note == null)
+                return BadRequest("Note was not found");
+
+            MongoNote newNote = new MongoNote();
+
+            newNote.Id = ObjectId.GenerateNewId();
+            newNote.Name = note.Name;
+            newNote.Text = note.Text;
+            newNote.Categories = new List<ObjectId>();
+            newNote.Dates = new List<MongoDate>();
+
+            foreach (var category in note.Categories)
             {
-                MongoNote newNote = new MongoNote();
-
-                if (customUser.Notes.Count != 0)
-                    newNote.NoteId = customUser.Notes[customUser.Notes.Count - 1].NoteId + 1;
-                else newNote.NoteId = 0;
-                newNote.Name = note.Name;
-                newNote.Text = note.Text;
-                newNote.Categories = new List<MongoCategory>();
-                newNote.Dates = new List<MongoDate>();
-
-                foreach (var category in note.Categories)
-                {
-                    foreach (var userCategory in customUser.Categories)
-                    {
-                        if (category.CategoryId == userCategory.CategoryId)
-                            newNote.Categories.Add(userCategory);
-                    }
-                }
-
-                foreach (var date in note.Dates)
-                {
-                    newNote.Dates.Add(date);
-                }
-
-                customUser.Notes.Add(newNote);
-
-                _db.GetCollection<MongoNote>("Notes").InsertOne(newNote);
-                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
-
-                return CreatedAtRoute("DefaultApi", newNote.Id, newNote);
+                newNote.Categories.Add(ObjectId.Parse(category.Id));
             }
-            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+
+            foreach (var date in note.Dates)
+            {
+                newNote.Dates.Add(date);
+            }
+
+            customUser.Notes.Add(newNote.Id);
+
+            _db.GetCollection<MongoNote>("Notes").InsertOne(newNote);
+            _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+
+            return CreatedAtRoute("DefaultApi", newNote.Id, newNote);
+
+
         }
 
         // PUT: api/Categories/5
-        public IHttpActionResult Put(int id, [FromBody]Note note)
+        public IHttpActionResult Put(string id, [FromBody]Note note)
         {
-            MongoCustomUser customUser = FindUserDocument();
-            if (customUser != null)
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            ObjectId oId = ObjectId.Parse(id);
+            MongoNote oldNote = null;
+            oldNote = FindNoteById(oId);
+
+            if (oldNote == null)
+                return BadRequest("Note with Id " + id + " was not found.");
+
+            oldNote.Name = note.Name;
+            oldNote.Text = note.Text;
+
+            oldNote.Categories.Clear();
+            oldNote.Dates.Clear();
+
+            foreach (var category in note.Categories)
             {
-                MongoNote oldNote = null;
-                oldNote = FindNoteById(customUser.Notes, id);
-
-                if (oldNote == null)
-                    return BadRequest("Note with Id " + id + " was not found.");
-
-                oldNote.Name = note.Name;
-                oldNote.Text = note.Text;
-
-                note.Categories.Clear();
-                note.Dates.Clear();
-
-                foreach (var category in note.Categories)
-                {
-                    foreach (var userCategory in customUser.Categories)
-                    {
-                        if (category.CategoryId == userCategory.CategoryId)
-                            oldNote.Categories.Add(userCategory);
-                    }
-                }
-
-                foreach (var date in note.Dates)
-                {
-                    oldNote.Dates.Add(date);
-                }
-
-                _db.GetCollection<MongoNote>("Notes").ReplaceOne(x => x.NoteId == id, oldNote);
-                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
-
-                return Ok(oldNote);
+                oldNote.Categories.Add(ObjectId.Parse(category.Id));
             }
-            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
 
+            foreach (var date in note.Dates)
+            {
+                oldNote.Dates.Add(date);
+            }
 
+            _db.GetCollection<MongoNote>("Notes").ReplaceOne(x => x.Id == oId, oldNote);
 
-
+            return Ok(oldNote);
         }
 
         // DELETE: api/Categories/5
-        public IHttpActionResult Delete(int id)
+        public IHttpActionResult Delete(string id)
         {
+            ObjectId oId = ObjectId.Parse(id);
             MongoCustomUser customUser = FindUserDocument();
-            if (customUser != null)
-            {
-                MongoNote Note = null;
-                Note = FindNoteById(customUser.Notes, id);
+            if (customUser == null)
+                return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
 
-                if (Note == null)
-                    return BadRequest("Note with Id " + id + " was not found.");
+            MongoNote Note = null;
+            Note = FindNoteById(oId);
 
-                customUser.Notes.Remove(Note);
+            if (Note == null)
+                return BadRequest("Note with Id " + id + " was not found.");
 
-                _db.GetCollection<MongoNote>("Notes").FindOneAndDelete(x => x.NoteId == id);
-                _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+            customUser.Notes.Remove(oId);
 
-                return Ok();
-            }
-            return InternalServerError(new System.Exception("Unexpected Error, User Document was not found"));
+            _db.GetCollection<MongoNote>("Notes").FindOneAndDelete(x => x.Id == oId);
+            _db.GetCollection<MongoCustomUser>("Users").ReplaceOne(x => x.Email == RequestContext.Principal.Identity.Name, customUser);
+
+            return Ok();
+
+
         }
     }
 }
